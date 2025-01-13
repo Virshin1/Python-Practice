@@ -3,120 +3,110 @@
 ```python
 import random
 import logging
-from typing import List, Tuple, Dict
-from enum import Enum
+from typing import Dict, Tuple, List
 
-# Enable logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logging.basicConfig(filename='randorama.log', level=logging.DEBUG)
 
-# Define a custom exception
-class InvalidMoveError(Exception):
-    pass
+class Randomizer:
+    def __init__(self, seed: int):
+        self.seed = seed
+        self.rng = random.Random(seed)
 
-# Define an enum for the different types of moves
-class MoveType(Enum):
-    ROCK = 0
-    PAPER = 1
-    SCISSORS = 2
+    def randomize_dict(self, d: Dict) -> Dict:
+        """Randomize the order of keys in a dictionary.
 
-# Define a class for a player
-class Player:
-    def __init__(self, name: str, move_type: MoveType):
-        self.name = name
-        self.move_type = move_type
+        Args:
+            d: The dictionary to randomize.
 
-    def get_move(self) -> MoveType:
-        return self.move_type
+        Returns:
+            A new dictionary with the keys in random order.
+        """
+        keys = list(d.keys())
+        self.rng.shuffle(keys)
+        return {key: d[key] for key in keys}
 
-# Define a class for a game of Rock, Paper, Scissors
-class RPSGame:
-    def __init__(self, players: List[Player]):
-        self.players = players
-        self.current_round = 0
+    def randomize_tuple(self, t: Tuple) -> Tuple:
+        """Randomize the order of elements in a tuple.
 
-    def play_round(self) -> Tuple[Player, MoveType]:
-        winner = None
-        winning_move = None
+        Args:
+            t: The tuple to randomize.
 
-        # Get the moves from each player
-        moves = [player.get_move() for player in self.players]
+        Returns:
+            A new tuple with the elements in random order.
+        """
+        lst = list(t)
+        self.rng.shuffle(lst)
+        return tuple(lst)
 
-        # Check if there is a tie
-        if all(move == moves[0] for move in moves):
-            logger.info("Tie!")
-            return None, None
+    def randomize_list(self, lst: List) -> List:
+        """Randomize the order of elements in a list.
 
-        # Determine the winner
-        for player, move in zip(self.players, moves):
-            if move == MoveType.ROCK:
-                if moves.count(MoveType.PAPER) > 0:
-                    winner = [player for player in self.players if player.get_move() == MoveType.PAPER][0]
-                    winning_move = MoveType.PAPER
-                elif moves.count(MoveType.SCISSORS) > 0:
-                    winner = player
-                    winning_move = MoveType.ROCK
-            elif move == MoveType.PAPER:
-                if moves.count(MoveType.SCISSORS) > 0:
-                    winner = [player for player in self.players if player.get_move() == MoveType.SCISSORS][0]
-                    winning_move = MoveType.SCISSORS
-                elif moves.count(MoveType.ROCK) > 0:
-                    winner = player
-                    winning_move = MoveType.PAPER
-            elif move == MoveType.SCISSORS:
-                if moves.count(MoveType.ROCK) > 0:
-                    winner = [player for player in self.players if player.get_move() == MoveType.ROCK][0]
-                    winning_move = MoveType.ROCK
-                elif moves.count(MoveType.PAPER) > 0:
-                    winner = player
-                    winning_move = MoveType.SCISSORS
+        Args:
+            lst: The list to randomize.
 
-        # Log the winner and the winning move
-        logger.info(f"{winner.name} wins with {winning_move.name}!")
+        Returns:
+            A new list with the elements in random order.
+        """
+        self.rng.shuffle(lst)
+        return lst
 
-        # Increment the current round
-        self.current_round += 1
+    def randomize_sequence(self, seq: list) -> list:
+        """Randomize the order of elements in any sequence.
 
-        return winner, winning_move
+        Args:
+            seq: The sequence to randomize.
 
-    def play_game(self) -> Dict[Player, int]:
-        # Initialize the scores
-        scores = {player: 0 for player in self.players}
+        Returns:
+            A new sequence with the elements in random order.
+        """
+        if isinstance(seq, dict):
+            return self.randomize_dict(seq)
+        elif isinstance(seq, tuple):
+            return self.randomize_tuple(seq)
+        elif isinstance(seq, list):
+            return self.randomize_list(seq)
+        else:
+            raise ValueError(f"Unsupported sequence type: {type(seq)}")
 
-        # Play the game until there is a winner
-        while True:
-            # Play a round
-            winner, winning_move = self.play_round()
+class RandomizerFactory:
+    def __init__(self):
+        self.randomizers = {}
 
-            # If there is a winner, increment their score
-            if winner is not None:
-                scores[winner] += 1
+    def get_randomizer(self, seed: int) -> Randomizer:
+        if seed not in self.randomizers:
+            self.randomizers[seed] = Randomizer(seed)
+        return self.randomizers[seed]
 
-            # Check if there is a winner
-            if any(score >= 3 for score in scores.values()):
-                break
+class RandomizerWrapper:
+    def __init__(self, factory: RandomizerFactory):
+        self.factory = factory
 
-        # Return the scores
-        return scores
+    def __getattr__(self, name: str):
+        if name.startswith('randomize_'):
+            def wrapper(*args, **kwargs):
+                seed = kwargs.get('seed', -1)
+                randomizer = self.factory.get_randomizer(seed)
+                return getattr(randomizer, name)(*args, **kwargs)
+            return wrapper
+        else:
+            raise AttributeError(f"No such attribute: {name}")
 
-# Generate random player names
-player_names = [f"Player {i}" for i in range(1, 6)]
+if __name__ == "__main__":
+    factory = RandomizerFactory()
+    wrapper = RandomizerWrapper(factory)
 
-# Create a list of players
-players = [Player(name, random.choice(list(MoveType))) for name in player_names]
+    # Example 1: Randomize a dictionary
+    d = {'a': 1, 'b': 2, 'c': 3}
+    random_d = wrapper.randomize_dict(d, seed=42)
+    logging.info(f"Randomized dictionary: {random_d}")
 
-# Create a game
-game = RPSGame(players)
+    # Example 2: Randomize a tuple
+    t = (1, 2, 3, 4, 5)
+    random_t = wrapper.randomize_tuple(t, seed=42)
+    logging.info(f"Randomized tuple: {random_t}")
 
-# Play the game
-scores = game.play_game()
-
-# Print the scores
-for player, score in scores.items():
-    print(f"{player.name}: {score}")
+    # Example 3: Randomize a list
+    lst = [1, 2, 3, 4, 5]
+    random_lst = wrapper.randomize_list(lst, seed=42)
+    logging.info(f"Randomized list: {random_lst}")
 ```
