@@ -1,148 +1,106 @@
 # Complex Python Program #30
 
 ```python
-import logging
+"""
+This program generates a random 3D maze and solves it using a depth-first search algorithm.
+"""
+
 import random
-from typing import List, Tuple
+import logging
+import timeit
+from typing import List, Tuple, Dict, Set
+from dataclasses import dataclass
 
+logging.basicConfig(level=logging.DEBUG)
 
-class Node:
-    """
-    Node class for a custom binary tree data structure.
+@dataclass
+class Cell:
+    x: int
+    y: int
+    z: int
+    visited: bool = False
 
-    Attributes:
-        value: The value stored in the node.
-        left: The left child node.
-        right: The right child node.
-    """
+@dataclass
+class Maze:
+    cells: Dict[Tuple[int, int, int], Cell]
+    width: int
+    height: int
+    depth: int
 
-    def __init__(self, value: int) -> None:
-        self.value = value
-        self.left = None
-        self.right = None
+    def __init__(self, width: int, height: int, depth: int):
+        self.width = width
+        self.height = height
+        self.depth = depth
+        self.cells = {(x, y, z): Cell(x, y, z) for x in range(width) for y in range(height) for z in range(depth)}
 
+    def is_valid_cell(self, cell: Cell) -> bool:
+        return 0 <= cell.x < self.width and 0 <= cell.y < self.height and 0 <= cell.z < self.depth
 
-class BinaryTree:
-    """
-    Custom binary tree data structure that allows for the generation of random trees.
+    def get_neighbors(self, cell: Cell) -> List[Cell]:
+        neighbors = [
+            Cell(cell.x + 1, cell.y, cell.z),
+            Cell(cell.x - 1, cell.y, cell.z),
+            Cell(cell.x, cell.y + 1, cell.z),
+            Cell(cell.x, cell.y - 1, cell.z),
+            Cell(cell.x, cell.y, cell.z + 1),
+            Cell(cell.x, cell.y, cell.z - 1),
+        ]
+        return [neighbor for neighbor in neighbors if self.is_valid_cell(neighbor)]
 
-    Attributes:
-        root: The root node of the tree.
-    """
+    def generate(self):
+        stack = [random.choice(list(self.cells.values()))]
+        while stack:
+            cell = stack.pop()
+            cell.visited = True
+            neighbors = self.get_neighbors(cell)
+            unvisited_neighbors = [neighbor for neighbor in neighbors if not neighbor.visited]
+            if unvisited_neighbors:
+                stack.append(cell)
+                stack.extend(unvisited_neighbors)
 
-    def __init__(self) -> None:
-        self.root = None
+    def print(self):
+        for z in range(self.depth):
+            print(f"Layer {z}")
+            for y in range(self.height):
+                for x in range(self.width):
+                    cell = self.cells[(x, y, z)]
+                    if cell.visited:
+                        print(".", end="")
+                    else:
+                        print("#", end="")
+                print()
 
-    def insert(self, value: int) -> None:
-        """
-        Inserts a node with the given value into the tree.
-
-        Args:
-            value: The value to insert.
-        """
-
-        if self.root is None:
-            self.root = Node(value)
-        else:
-            self._insert_helper(value, self.root)
-
-    def _insert_helper(self, value: int, node: Node) -> None:
-        if value < node.value:
-            if node.left is None:
-                node.left = Node(value)
-            else:
-                self._insert_helper(value, node.left)
-        else:
-            if node.right is None:
-                node.right = Node(value)
-            else:
-                self._insert_helper(value, node.right)
-
-    def generate_random_tree(self, size: int, min_value: int, max_value: int) -> None:
-        """
-        Generates a random binary tree with the given size and value range.
-
-        Args:
-            size: The size of the tree.
-            min_value: The minimum value allowed in the tree.
-            max_value: The maximum value allowed in the tree.
-        """
-
-        for _ in range(size):
-            value = random.randint(min_value, max_value)
-            self.insert(value)
-
-
-class Forest():
-    """
-    A collection of BinaryTree objects, representing a forest.
-
-    Attributes:
-        trees: A list of BinaryTree objects.
-    """
-    def __init__(self):
-        self.trees = []
-
-    def add_tree(self, tree: BinaryTree):
-        """
-        Adds a binary tree to the forest.
-
-        Args:
-            tree: The binary tree to add.
-        """
-        self.trees.append(tree)
-
-    def get_tree_with_maximum_depth(self) -> BinaryTree:
-        """
-        Finds and returns the binary tree in the forest with the maximum depth.
-
-        Returns:
-            The binary tree with the maximum depth.
-        """
-        if not self.trees:
-            raise ValueError("No trees in the forest")
-        max_depth = 0
-        max_depth_tree = None
-        for tree in self.trees:
-            depth = self.get_depth(tree.root)
-            if depth > max_depth:
-                max_depth = depth
-                max_depth_tree = tree
-        return max_depth_tree
-
-    def get_depth(self, node: Node) -> int:
-        """
-        Calculates the depth of the binary tree rooted at the given node.
-
-        Args:
-            node: The root node of the binary tree.
-
-        Returns:
-            The depth of the binary tree.
-        """
-        if not node:
-            return 0
-        return 1 + max(self.get_depth(node.left), self.get_depth(node.right))
-
-def main() -> None:
-    """
-    Main function that generates a forest of random binary trees and finds the tree with the maximum depth.
-    """
-    try:
-        # Create a forest of 10 random binary trees.
-        forest = Forest()
-        for _ in range(10):
-            tree = BinaryTree()
-            tree.generate_random_tree(100, 1, 100)
-            forest.add_tree(tree)
-
-        # Find the tree with the maximum depth.
-        max_depth_tree = forest.get_tree_with_maximum_depth()
-        print(f"The tree with the maximum depth is: {max_depth_tree.root.value}")
-    except ValueError as e:
-        logging.error(str(e))
-
+    def solve(self, start: Cell, end: Cell) -> List[Cell]:
+        stack = [(start, [start])]
+        while stack:
+            cell, path = stack.pop()
+            if cell == end:
+                return path
+            neighbors = self.get_neighbors(cell)
+            unvisited_neighbors = [neighbor for neighbor in neighbors if not neighbor.visited]
+            for neighbor in unvisited_neighbors:
+                stack.append((neighbor, path + [neighbor]))
+        return []
 
 if __name__ == "__main__":
-    main()
+    start = timeit.default_timer()
+
+    width = 10
+    height = 10
+    depth = 10
+
+    maze = Maze(width, height, depth)
+    maze.generate()
+    maze.print()
+
+    start = Cell(0, 0, 0)
+    end = Cell(width - 1, height - 1, depth - 1)
+    solution = maze.solve(start, end)
+    if solution:
+        print("Solution found:", solution)
+    else:
+        print("No solution found")
+
+    stop = timeit.default_timer()
+    print(f"Elapsed time: {stop - start}")
 ```
