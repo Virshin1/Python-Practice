@@ -1,79 +1,105 @@
 # Complex Python Program #27
 
 ```python
-import logging
 import random
-import secrets
+import logging
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("random_program.log"), logging.StreamHandler()]
-)
+logging.basicConfig(filename='unpredictable.log', level=logging.INFO)
 
-class RandomNumberGenerator:
-    def __init__(self, seed=None):
-        if seed is None:
-            seed = secrets.randbelow(2**32)
+class UnpredictableGenerator:
+    def __init__(self, seed: int):
         self.seed = seed
-        self._state = seed
+        self.state = seed
+        self._logger = logging.getLogger(__name__)
 
-    def next_int(self, a, b):
+    def generate(self, count: int) -> list[int]:
+        """Generates a sequence of unpredictable numbers.
+
+        This generator uses a non-deterministic algorithm to produce a sequence
+        of numbers that are difficult to predict, even given the seed value.
+
+        Args:
+            count: The number of numbers to generate.
+
+        Returns:
+            A list of integers.
         """
-        Generate a random integer between `a` and `b` (inclusive).
+        try:
+            self._logger.info(f'Generating {count} unpredictable numbers with seed {self.seed}')
+            result = []
+            for _ in range(count):
+                self.state = (self.state * 1103515245 + 12345) % 2**32
+                result.append(self.state)
+            return result
+        except Exception as e:
+            self._logger.error('An error occurred while generating unpredictable numbers', exc_info=e)
+            raise
 
-        :param a: The lower bound of the range.
-        :param b: The upper bound of the range.
-        :raises ValueError: If `a` > `b`.
-        :return: A random integer between `a` and `b`.
+class UnpredictableTransformer:
+    def __init__(self):
+        self._logger = logging.getLogger(__name__)
+
+    def transform(self, numbers: list[int]) -> list[int]:
+        """Transforms a sequence of numbers into a new sequence.
+
+        This transformer applies a series of random operations to the input sequence,
+        resulting in a new sequence that is different from the original.
+
+        Args:
+            numbers: The list of numbers to transform.
+
+        Returns:
+            A list of integers.
         """
+        try:
+            self._logger.info(f'Transforming {len(numbers)} unpredictable numbers')
+            result = []
+            for number in numbers:
+                operation = random.choice(['add', 'subtract', 'multiply', 'divide'])
+                if operation == 'add':
+                    result.append(number + random.randint(1, 100))
+                elif operation == 'subtract':
+                    result.append(number - random.randint(1, 100))
+                elif operation == 'multiply':
+                    result.append(number * random.randint(1, 10))
+                elif operation == 'divide':
+                    if number != 0:
+                        result.append(number // random.randint(1, 10))
+            return result
+        except Exception as e:
+            self._logger.error('An error occurred while transforming unpredictable numbers', exc_info=e)
+            raise
 
-        if a > b:
-            raise ValueError("The lower bound must be less than or equal to the upper bound.")
+class UnpredictableManager:
+    def __init__(self):
+        self._logger = logging.getLogger(__name__)
 
-        self._state = (self._state * 48271) % 2147483647
-        return a + (self._state % (b - a + 1))
+    def generate_and_transform(self, count: int, seed: int) -> list[int]:
+        """Generates a sequence of unpredictable numbers and transforms them.
 
-class RandomStringGenerator:
-    def __init__(self, alphabet="abcdefghijklmnopqrstuvwxyz"):
-        self.alphabet = alphabet
+        This method combines the functionality of the UnpredictableGenerator
+        and UnpredictableTransformer classes to generate a sequence of numbers
+        that are both unpredictable and transformed.
 
-    def next_string(self, length):
+        Args:
+            count: The number of numbers to generate.
+            seed: The seed to use for the generator.
+
+        Returns:
+            A list of integers.
         """
-        Generate a random string of the specified length.
+        try:
+            self._logger.info(f'Generating and transforming {count} unpredictable numbers with seed {seed}')
+            generator = UnpredictableGenerator(seed)
+            transformer = UnpredictableTransformer()
+            numbers = generator.generate(count)
+            return transformer.transform(numbers)
+        except Exception as e:
+            self._logger.error('An error occurred while generating and transforming unpredictable numbers', exc_info=e)
+            raise
 
-        :param length: The length of the string to generate.
-        :return: A random string of the specified length.
-        """
-
-        return "".join(random.choices(self.alphabet, k=length))
-
-class RandomGenerator:
-    def __init__(self, seed=None):
-        self.number_generator = RandomNumberGenerator(seed)
-        self.string_generator = RandomStringGenerator()
-
-    def next_random(self):
-        """
-        Generate a random value of a random type.
-
-        :return: A random value of a random type.
-        """
-
-        type = self.number_generator.next_int(0, 2)
-        if type == 0:
-            return self.number_generator.next_int(-100, 100)
-        elif type == 1:
-            return self.string_generator.next_string(self.number_generator.next_int(1, 10))
-        else:
-            return None
-
-def main():
-    logging.info("Generating 10 random values:")
-    random_generator = RandomGenerator()
-    for i in range(10):
-        logging.info(random_generator.next_random())
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    manager = UnpredictableManager()
+    result = manager.generate_and_transform(10, 12345)
+    print(result)
 ```
